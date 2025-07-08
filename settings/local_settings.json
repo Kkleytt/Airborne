@@ -1,0 +1,19 @@
+{
+  "mysql": {
+    "host": "localhost",
+    "port": "3000",
+    "username": "airborne",
+    "password": "airborne",
+    "database": "airborne"
+  },
+  "api": {
+    "host": "127.0.0.1",
+    "port": "8000"
+  },
+  "rabbitmq": {
+    "host": "localhost",
+    "port": "3004",
+    "username": "airborne",
+    "password": "airborne"
+  }
+}
