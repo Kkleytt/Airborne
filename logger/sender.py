@@ -4,74 +4,84 @@ import aio_pika
 from datetime import datetime
 from settings.get_config import get_config
 
-# Глобальные объекты состояний
-_connection = None  # Соединение с RabbitMQ
-_channel = None     # Канал для работы
-_initialized = False  # Статус инициализации
-_log_queue = asyncio.Queue()  # Очередь логов
-_worker_task = None  # Задача наблюдателя
-_init_lock = asyncio.Lock()  # Блокировка для init
-_ready_event = asyncio.Event()  # Статус запуска логера
-_worker_started = asyncio.Event()  # Статус запуска наблюдателя
+
+# Глобальное состояние
+class LoggerState:
+    def __init__(self):
+        self.connection = None
+        self.channel = None
+        self.initialized = False
+        self.init_lock = asyncio.Lock()
+        self.ready_event = asyncio.Event()
+        self.log_queue = asyncio.Queue()
+        self.query_queue = asyncio.Queue()
+        self.worker_task = None
 
 
-# Инициализация логера и запуск фонового наблюдателя
+state = LoggerState()
+
+
+# Инициализация подключения к RabbitMQ и запуск воркера
 async def init_logger():
-    global _connection, _channel, _initialized, _worker_task
-
-    # Создание данных для подключения к RabbitMq
-    config = get_config()['rabbitmq']
-    rabbitmq_url = f"amqp://{config['username']}:{config['password']}@{config['host']}:{config['port']}/"
-
-    async with _init_lock:
-        if _initialized:
+    async with state.init_lock:
+        if state.initialized:
             return
+
+        config = get_config()['rabbitmq']
+        url = f"amqp://{config['username']}:{config['password']}@{config['host']}:{config['port']}/"
+
         try:
-            _connection = await aio_pika.connect_robust(rabbitmq_url)  # Подключаемся к RabbitMQ
-            _channel = await _connection.channel()  # Открываем канал
+            state.connection = await aio_pika.connect_robust(url)
+            state.channel = await state.connection.channel()
 
-            # Создаем очередь для логов
-            await _channel.declare_queue(
-                "logs",
-                durable=True,
-                auto_delete=False,
-                arguments={"x-message-ttl": 30000}  # Хранить до 30 секунд
-            )
+            await state.channel.declare_queue("logs", durable=True, arguments={"x-message-ttl": 30000})
+            await state.channel.declare_queue("queries", durable=True, arguments={"x-message-ttl": 30000})
 
-            _worker_task = asyncio.create_task(_log_worker())  # Создаём задачу для наблюдателя
-            await _worker_started.wait()  # Ждём запуска наблюдателя
-
-            _initialized = True
+            state.worker_task = asyncio.create_task(_worker())
+            state.initialized = True
+            state.ready_event.set()
         except Exception as e:
-            print(f"[Logger][ERROR] Не удалось подключиться к RabbitMQ: {e}")
-            _initialized = False
+            print(f"[Logger][ERROR] Ошибка подключения к RabbitMQ: {e}")
 
 
-# Фоновая проверка очереди логов и их отправка в RabbitMq
-async def _log_worker():
-    global _channel
-
-    _worker_started.set()  # Сообщаем о запуске
-
-    # Запускаем бесконечный цикл проверки очереди логов
+# Универсальный воркер для логов и запросов
+async def _worker():
     while True:
+        log_task = asyncio.create_task(state.log_queue.get())
+        query_task = asyncio.create_task(state.query_queue.get())
 
-        log_entry = await _log_queue.get()  # Получаем запись из очереди
-        try:
-            # Публикуем лог в RabbitMQ
-            await _channel.default_exchange.publish(
-                aio_pika.Message(body=json.dumps(log_entry).encode()),
-                routing_key="logs"
-            )
-        except Exception as e:
-            print(f"[Logger][Worker ERROR] Не удалось отправить лог: {e}")
-        finally:
-            _log_queue.task_done()  # Отмечаем задание как выполненное
+        done, _ = await asyncio.wait(
+            [log_task, query_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        if log_task in done:
+            log_entry = log_task.result()
+            try:
+                await state.channel.default_exchange.publish(
+                    aio_pika.Message(body=json.dumps(log_entry).encode()),
+                    routing_key="logs"
+                )
+            except Exception as e:
+                print(f"[Logger][Worker ERROR] Лог не отправлен: {e}")
+            finally:
+                state.log_queue.task_done()
+
+        if query_task in done:
+            query_entry = query_task.result()
+            try:
+                await state.channel.default_exchange.publish(
+                    aio_pika.Message(body=json.dumps(query_entry).encode()),
+                    routing_key="queries"
+                )
+            except Exception as e:
+                print(f"[Logger][Worker ERROR] Запрос не отправлен: {e}")
+            finally:
+                state.query_queue.task_done()
 
 
-# Создание структуры лога
-def _build_log(level: str, message: str, module: str = "None", code: int = 0) -> dict:
-    # Формируем структуру лога
+# Формирование лог-сообщения
+def _build_log(level: str, message: str, module: str = "None", code: int = 0):
     return {
         "timestamp": datetime.utcnow().isoformat(),
         "level": level.upper(),
@@ -81,75 +91,70 @@ def _build_log(level: str, message: str, module: str = "None", code: int = 0) ->
     }
 
 
-# Создание асинхронной задачи на добавление лога в очередь
-def _enqueue_log(level: str, message: str, module: str = "None", code: int = 0):
-    asyncio.create_task(_safe_enqueue(level, message, module, code))
+# Формирование запроса
+def _build_query(user_id: int, chat_id: int, text_type: str, text: str, time: int):
+    return {
+        "user_id": user_id,
+        "chat_id": chat_id,
+        "query_type": text_type,
+        "query_text": text,
+        "response_time": time
+    }
 
 
-# Добавление лога в очередь
-async def _safe_enqueue(level: str, message: str, module: str = "None", code: int = 0):
-
-    # Проверка на запуск логера
-    if not _initialized:
+# Добавление в очередь лога
+async def _safe_enqueue_log(level, message, module, code):
+    if not state.initialized:
         await init_logger()
-        await _ready_event.wait()  # Ожидание запуска
-
-    log_entry = _build_log(level, message, module, code)  # Формируем запись лога
-    await _log_queue.put(log_entry)  # Добавляем в очередь
+        await state.ready_event.wait()
+    await state.log_queue.put(_build_log(level, message, module, code))
 
 
-# Информационное сообщение
-def info(message: str, module: str = "None", code: int = 0):
-    _enqueue_log("INFO", message, module, code)
+# Добавление в очередь запроса
+async def _safe_enqueue_query(user_id, chat_id, text_type, text, time):
+    if not state.initialized:
+        await init_logger()
+        await state.ready_event.wait()
+    await state.query_queue.put(_build_query(user_id, chat_id, text_type, text, time))
 
 
-# Предупреждающее сообщение
-def warning(message: str, module: str = "None", code: int = 0):
-    _enqueue_log("WARNING", message, module, code)
+# Публичные методы логирования
+def info(message: str, module="None", code=0): asyncio.create_task(_safe_enqueue_log("INFO", message, module, code))
+def warning(message: str, module="None", code=0): asyncio.create_task(_safe_enqueue_log("WARNING", message, module, code))
+def error(message: str, module="None", code=1): asyncio.create_task(_safe_enqueue_log("ERROR", message, module, code))
+def critical(message: str, module="None", code=2): asyncio.create_task(_safe_enqueue_log("CRITICAL", message, module, code))
+def none(message: str, module="None", code=0): asyncio.create_task(_safe_enqueue_log("NONE", message, module, code))
 
 
-# Ошибочное сообщение
-def error(message: str, module: str = "None", code: int = 1):
-    _enqueue_log("ERROR", message, module, code)
+# Публичный метод отправки Telegram-запроса
+def query(user_id: int, chat_id: int, text_type: str, text: str, time: int):
+    asyncio.create_task(_safe_enqueue_query(user_id, chat_id, text_type, text, time))
 
 
-# Критическое сообщение
-def critical(message: str, module: str = "None", code: int = 2):
-    _enqueue_log("CRITICAL", message, module, code)
-
-
-# Неопознанное сообщение
-def none(message: str, module: str = "None", code: int = 0):
-    _enqueue_log("NONE", message, module, code)
-
-
-# Закрытие соединения
+# Закрытие логгера
 async def close_logger():
-    global _connection, _channel, _worker_task, _initialized
-
-    # Если фоновый наблюдатель запущен - дожидаемся завершения работы
-    if _worker_task:
-        _worker_task.cancel()
+    if state.worker_task:
+        state.worker_task.cancel()
         try:
-            await _worker_task  # Ждём отмены задачи
+            await state.worker_task
         except asyncio.CancelledError:
             pass
 
-    # Если соединение открыто - закрываем
-    if _connection:
+    if state.connection:
         try:
-            await _connection.close()
+            await state.connection.close()
         except Exception as e:
-            print(f"[Logger] Ошибка при закрытии соединения: {e}")
+            print(f"[Logger] Ошибка при закрытии RabbitMQ: {e}")
 
-    _initialized = False
-    _worker_started.clear()
+    state.initialized = False
+    state.ready_event.clear()
 
 
-# Ожидание завершения всех логов
+# Ожидание окончания всех задач
 async def flush_logs():
-    if not _initialized:
+    if not state.initialized:
         await init_logger()
-        await _ready_event.wait()
+        await state.ready_event.wait()
 
-    await _log_queue.join()  # Ждём опустошения очереди
+    await state.log_queue.join()
+    await state.query_queue.join()

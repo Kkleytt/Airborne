@@ -1,12 +1,11 @@
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Integer, Text, TIMESTAMP, BigInteger, String
 from sqlalchemy.sql import func
+from database.models.basemodel import BaseModel
 
 
 # Класс для хранения логов
-class LogsBase(DeclarativeBase):
+class LogsModel(BaseModel):
     """
     id: ID лога
     timestamp: Время записи лога
@@ -19,7 +18,7 @@ class LogsBase(DeclarativeBase):
     __tablename__ = "logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
     level: Mapped[str] = mapped_column(String(16), nullable=False)
     module: Mapped[str] = mapped_column(String(64), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
@@ -27,7 +26,7 @@ class LogsBase(DeclarativeBase):
 
 
 # Класс для хранения Telegram запросов
-class QueryBase(DeclarativeBase):
+class QueryModel(BaseModel):
     """
     id: ID запроса
     timestamp: Timestamp дата прихода запроса
@@ -36,16 +35,14 @@ class QueryBase(DeclarativeBase):
     query_type: Типа запроса (callback, message, command) (Текст длиной не более 32 символов)
     query_text: Текст запроса (Текст любой длины)
     response_time: Время обработки запроса в миллисекундах
-    status_code: Код ответа пользователю
     """
 
     __tablename__ = "telegram_query"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     query_type: Mapped[str] = mapped_column(String(32), nullable=False)
     query_text: Mapped[str] = mapped_column(Text, nullable=False)
     response_time: Mapped[int] = mapped_column(Integer, nullable=True)
-    status_code: Mapped[int] = mapped_column(Integer, nullable=True)

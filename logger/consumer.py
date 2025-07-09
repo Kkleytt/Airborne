@@ -7,7 +7,8 @@ from settings.get_config import get_config  # Получение локальн�
 from api.mysql.fastapi_app import get_url  # Получение URL API настроек
 from logger.methods.to_console import ConsoleLogger  # Вывод логов в консоль
 from logger.methods.to_file import FileLogger  # Вывод логов в файл
-from database.connectors.connector import get_client
+from database.connectors.connector import get_client  # Подключение Базы Данных
+from database.models.timescale import LogsModel, QueryModel  # Модель данных TimeScaleDb
 
 
 # Создание данных для подключения к RabbitMq
@@ -43,17 +44,15 @@ def get_connection_settings():
     }
 
 
-save_to_console, save_to_file, save_to_database = get_methods()
-
 # Создание объектов для записи логов
+save_to_console, save_to_file, save_to_database = get_methods()
 CONSOLE = ConsoleLogger()
 FILE = FileLogger()
-DB_LOG = get_client(db_type="timescale", **get_connection_settings())
-DB_QUERY = get_client(db_type="timescale", **get_connection_settings())
+DB = get_client(db_type="timescale", **get_connection_settings())
 
 
 # Логика обработки логов
-async def callback_logs(message: aio_pika.IncomingMessage):
+async def save_logs(message: aio_pika.IncomingMessage):
 
     # Читаем сообщение с автоматическим удалением после чтения
     async with message.process():
@@ -71,13 +70,20 @@ async def callback_logs(message: aio_pika.IncomingMessage):
 
         # Проверка на сохранение логов в TimeScaleDb
         if save_to_database is True:
-            pass
+            # await DB.create_table_if_not_exists(LogsModel)
+            message.pop("timestamp", None)  # Удаляем TimeStamp из сообщения (т.к. он генерируется в БД)
+            await DB.insert_model(LogsModel, message)  # Записываем лог
 
 
 # Логика обработки Telegram запросов
-async def callback_query(message: aio_pika.IncomingMessage):
+async def save_telegram_query(message: aio_pika.IncomingMessage):
     async with message.process():  # автоматическое подтверждение
-        print(f"[LOG] {message.body.decode()}")
+
+        # Распаковка сообщения
+        message = json.loads(message.body.decode())
+
+        # await DB.create_table_if_not_exists(QueryModel)
+        await DB.insert_model(QueryModel, message)
 
 
 async def main():
@@ -85,13 +91,17 @@ async def main():
     connection = await aio_pika.connect_robust(RABBITMQ_URL)
     channel = await connection.channel()
 
+    # Перед запуском очередей
+    await DB.create_table_if_not_exists(LogsModel)
+    await DB.create_table_if_not_exists(QueryModel)
+
     # Объявляем очередь (если не существует)
     logs_queue = await channel.declare_queue("logs", durable=True, auto_delete=False, arguments={"x-message-ttl": 30000})
-    query_queue = await channel.declare_queue("query", durable=True, auto_delete=False, arguments={"x-message-ttl": 30000})
+    query_queue = await channel.declare_queue("queries", durable=True, auto_delete=False, arguments={"x-message-ttl": 30000})
 
     # Подписываемся на сообщения
-    await logs_queue.consume(callback_logs)
-    await query_queue.consume(callback_query)
+    await logs_queue.consume(save_logs)
+    await query_queue.consume(save_telegram_query)
 
     # Бесконечное ожидание сообщений
     await asyncio.Future()

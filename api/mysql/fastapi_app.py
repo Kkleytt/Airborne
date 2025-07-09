@@ -5,14 +5,15 @@ from sqlalchemy import and_, or_
 import uvicorn
 
 from settings.get_config import get_config
-from database.models.mysql import SettingsBase
+from database.models.mysql import SettingsModel
 from api.mysql.models import SettingResponse, SettingUpdate, SettingCreate
-from api.mysql.dependencies import get_mysql_client
+from database.connectors.connector import get_client
 from logger import sender as lg
 
 
 app = FastAPI()  # Создание FastApi приложения
 config = get_config()  # Получение локальных настроек
+DB = get_client("mysql", **config['mysql'])
 
 
 # Предоставление URL адреса для подключения
@@ -48,21 +49,21 @@ async def log_requests(request: Request, call_next):
 
 # Получение настроек с поиском по key, tag, type, editable
 @app.get("/secret", response_model=List[SettingResponse])
-async def get_settings(key: str = Query(None), tag: str = Query(None), value_type: str = Query(None), editable: bool = Query(None), db=Depends(get_mysql_client)):
+async def get_settings(key: str = Query(None), tag: str = Query(None), value_type: str = Query(None), editable: bool = Query(None)):
     filters = []
 
     # Добавляем параметры в фильтрацию
     if key is not None:
-        filters.append(SettingsBase.key == key)
+        filters.append(SettingsModel.key == key)
     if tag is not None:
-        filters.append(SettingsBase.tag == tag)
+        filters.append(SettingsModel.tag == tag)
     if value_type is not None:
-        filters.append(SettingsBase.type == value_type)
+        filters.append(SettingsModel.type == value_type)
     if editable is not None:
-        filters.append(SettingsBase.editable == editable)
+        filters.append(SettingsModel.editable == editable)
 
-    result = await db.select_model(
-        model=SettingsBase,
+    result = await DB.select_model(
+        model=SettingsModel,
         filters=and_(*filters) if filters else None
     )
     return result
@@ -70,19 +71,19 @@ async def get_settings(key: str = Query(None), tag: str = Query(None), value_typ
 
 # Получение множества значений ключей
 @app.get("/secret/many", response_model=Dict[str, str])
-async def get_list_settings(keys: List[str] = Query(None), tag: str = Query(None), db=Depends(get_mysql_client)):
+async def get_list_settings(keys: List[str] = Query(None), tag: str = Query(None)):
     filters = []
 
     if keys:
-        filters.append(SettingsBase.key.in_(keys))
+        filters.append(SettingsModel.key.in_(keys))
     if tag:
-        filters.append(SettingsBase.tag == tag)
+        filters.append(SettingsModel.tag == tag)
 
     if not filters:
         return {}
 
-    results = await db.select_model(
-        model=SettingsBase,
+    results = await DB.select_model(
+        model=SettingsModel,
         filters=or_(*filters)
     )
 
@@ -91,14 +92,14 @@ async def get_list_settings(keys: List[str] = Query(None), tag: str = Query(None
 
 # Добавление новых настроек
 @app.post("/secret", response_model=SettingResponse)
-async def create_setting(payload: SettingCreate, db=Depends(get_mysql_client)):
+async def create_setting(payload: SettingCreate):
     # Проверка, есть ли уже такая настройка
-    existing = await db.select_model(SettingsBase, SettingsBase.key == payload.key, fetch_one=True)
+    existing = await DB.select_model(SettingsModel, SettingsModel.key == payload.key, fetch_one=True)
     if existing:
         raise HTTPException(status_code=409, detail="Setting with this key already exists")
 
     try:
-        await db.insert_model(SettingsBase, payload.dict())
+        await DB.insert_model(SettingsModel, payload.dict())
         return payload
     except IntegrityError:
         raise HTTPException(status_code=400, detail="Invalid data")
@@ -106,9 +107,9 @@ async def create_setting(payload: SettingCreate, db=Depends(get_mysql_client)):
 
 # Обновление настроек с поиском по ключу
 @app.put("/secret/{key}", response_model=SettingResponse)
-async def update_setting(key: str, payload: SettingUpdate, db=Depends(get_mysql_client)):
+async def update_setting(key: str, payload: SettingUpdate):
     # Проверка, что запись существует
-    existing = await db.select_model(SettingsBase, SettingsBase.key == key, fetch_one=True)
+    existing = await DB.select_model(SettingsModel, SettingsModel.key == key, fetch_one=True)
     if not existing:
         raise HTTPException(status_code=404, detail="Setting not found")
 
@@ -122,10 +123,10 @@ async def update_setting(key: str, payload: SettingUpdate, db=Depends(get_mysql_
         raise HTTPException(status_code=400, detail="No valid fields provided")
 
     # Обновление записи
-    await db.update_fields(SettingsBase, {"key": key}, new_data)
+    await DB.update_fields(SettingsModel, {"key": key}, new_data)
 
     # Возврат обновлённой записи
-    updated = await db.select_model(SettingsBase, SettingsBase.key == key, fetch_one=True)
+    updated = await DB.select_model(SettingsModel, SettingsModel.key == key, fetch_one=True)
     return updated
 
 

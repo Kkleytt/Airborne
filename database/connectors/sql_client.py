@@ -67,7 +67,7 @@ class Client:
             return
         try:
             async with self.engine.begin() as conn:
-                await conn.run_sync(model.metadata.create_all)
+                await conn.run_sync(lambda sync_conn: model.__table__.create(bind=sync_conn, checkfirst=True))
         except Exception as e:
             await self.handle_error(e)
 

@@ -1,11 +1,11 @@
-from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy import Text, Boolean, VARCHAR
+from database.models.basemodel import BaseModel
 
 
 # Класс для хранения настроек
-class SettingsBase(DeclarativeBase):
+class SettingsModel(BaseModel):
     """
     key: Ключ для поиска параметров (Текст не более 64 символов)
     type: Тип параметра (INT, BOOL, STR, JSON, FLOAT) (Текст длиной не более 16 символов)

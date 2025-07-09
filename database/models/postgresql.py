@@ -1,12 +1,11 @@
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Integer, Float, Text, Boolean, TIMESTAMP, BigInteger, JSON, Date, String
 from sqlalchemy.sql import func
+from database.models.basemodel import BaseModel
 
 
 # Класс для хранения компонентов (Текста, Фото, Аудио, Файлы, Клавиатуры)
-class KnowledgeBase(DeclarativeBase):
+class KnowledgeModel(BaseModel):
     """
     id: ID компонента
     created: Timestamp дата создания компонента
@@ -33,7 +32,7 @@ class KnowledgeBase(DeclarativeBase):
 
 
 # Класс для хранения новостей
-class NewsBase(DeclarativeBase):
+class NewsModel(BaseModel):
     """
     id: ID новости
     created: Timestamp дата создания новости
@@ -66,7 +65,7 @@ class NewsBase(DeclarativeBase):
 
 
 # Класс для хранения пользователей
-class UsersBase(DeclarativeBase):
+class UsersModel(BaseModel):
     """
     id: Telegram ID пользователя
     nick: Telegram никнейм пользователя (Текст длиной не более 64 символов)
@@ -82,7 +81,7 @@ class UsersBase(DeclarativeBase):
     blocked_time: Время окончания блокировки пользователя
     ip: Последний IP адрес пользователя (Текст длиной не более 32 символов)
     device: Последнее устройство пользователя (Текст длиной не более 64 символов)
-    role: Роль пользователя (user, privileges, temp_admin, admin, root) (Текст длиной не более 16 символов)
+    role: Роль пользователя (user, trusted, admin, root) (Текст длиной не более 16 символов)
     rating: Рейтинг пользователя на основе отзывов о нем
     description: Описание себя как пользователя (Текст любой длины)
     groups: Список групп в которых состоит пользователь
@@ -111,7 +110,7 @@ class UsersBase(DeclarativeBase):
 
 
 # Класс для хранения групп пользователей
-class GroupsBase(DeclarativeBase):
+class GroupsModel(BaseModel):
     """
     id: ID группы
     name: Название группы (Текст любой длины)
@@ -136,7 +135,7 @@ class GroupsBase(DeclarativeBase):
 
 
 # Класс для хранения событий
-class EventsBase(DeclarativeBase):
+class EventsModel(BaseModel):
     """
     id: ID события
     name: Название события (Текст любой длины)

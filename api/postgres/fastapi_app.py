@@ -6,7 +6,7 @@ import uvicorn
 import requests
 
 from api.mysql.fastapi_app import get_url  # Получение URL API настроек
-from database.models.postgresql import KnowledgeBase, NewsBase, UsersBase, GroupsBase, EventsBase  # Схемы данных в PostgreSQL
+from database.models.postgresql import KnowledgeBaseModel, NewsBaseModel, UsersBaseModel, GroupsBaseModel, EventsBaseModel  # Схемы данных в PostgreSQL
 from api.postgres.models import SettingResponse, SettingUpdate, SettingCreate  # Схемы запросов
 from api.mysql.dependencies import get_mysql_client  # Зависимости с СУБД
 from logger import sender as lg  # Логер

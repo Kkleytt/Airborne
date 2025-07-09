@@ -14,12 +14,12 @@ def get_client(db_type: str, host: str, port: int, username: str, password: str,
     """
 
     # Подключение к SQL базам данных
-    if db_type in ["postgres", "mysql", "timescale"]:
+    if db_type in ["postgres", "mysql", "timescale", "mariadb"]:
         return SqlClient(db_type, host, port, username, password, database)
 
     # Подключение к Redis
     elif db_type == "redis":
-        return RedisClient(host, port, username, password, database)
+        return RedisClient(host, port, username, password)
 
     # Обработка неверного типа СУБД
     else:

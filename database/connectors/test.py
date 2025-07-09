@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 
 from database.connectors.connector import get_client  # Клиент для подключения к СУБД
-from database.models.mysql import SettingsBase  # Модель СУБД MySQL
+from database.models.mysql import SettingsModel  # Модель СУБД MySQL
 from api.mysql.fastapi_app import get_url  # URL для общения с API
 from logger import sender as lg  # Логер
 from settings.get_config import get_config  # Получение локальных настроек
@@ -35,13 +35,13 @@ async def main():
     # ============================================================
     # Пример создания таблицы используя ORM модель
     await mysql_client.create_table_if_not_exists(
-        model=SettingsBase  # Модель для создания
+        model=SettingsModel  # Модель для создания
     )
 
     # ============================================================
     # Пример добавления записи через ORM
     await mysql_client.insert_model(
-        SettingsBase,  # Модель для применения полей
+        SettingsModel,  # Модель для применения полей
         # Данные для вставки
         {
             "key": "debug",
@@ -56,7 +56,7 @@ async def main():
     # ============================================================
     # Пример обновления записи через ORM
     await mysql_client.update_fields(
-        model=SettingsBase,  # Выбор модели для применения полей
+        model=SettingsModel,  # Выбор модели для применения полей
         filter_by={"key": "debug"},  # Выбор ключа для поиска записи и его значения
         new_data={"value": "false", "description": "Debug mode disabled", "editable": False}  # Новые данные для замены
     )
@@ -64,8 +64,8 @@ async def main():
     # ============================================================
     # ORM-запрос через select_model() (Более удобный формат)
     settings = await mysql_client.select_model(
-        model=SettingsBase,  # Модель для применения полей
-        filters=SettingsBase.tag == 'postgres'  # Фильтр для применения
+        model=SettingsModel,  # Модель для применения полей
+        filters=SettingsModel.tag == 'postgres'  # Фильтр для применения
     )
     for item in settings:
         print(f"{item.key}: {item.value}")
@@ -96,11 +96,35 @@ async def main():
     print("PG Connected:", await postgres_client.is_connected())
 
     # ============================================================
+    # Пример записи Telegram запроса в БД
+    lg.query(12345, 54321, "message", "Привет, бот!", 150)
+
+    # ============================================================
     # Пример завершения работы логера (до-запись оставшихся логов)
     await lg.flush_logs()
     await lg.close_logger()
     print("Все логи отправлены и соединение закрыто!")
 
 
+async def test():
+    await lg.init_logger()
+
+    lg.info("Начат процесс тестирования функции query()", "TEST")
+    await asyncio.sleep(1)
+
+    for i in range(20):
+        # Тестовые данные
+        user_id = 12345
+        chat_id = 54321
+        text_type = "text"
+        text = "Привет, бот!"
+        response_time = 150
+
+
+
+    lg.info("Процесс тестирования завершен", "TEST")
+    await asyncio.sleep(5)
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(test())
