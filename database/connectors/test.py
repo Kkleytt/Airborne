@@ -5,7 +5,7 @@ from database.connectors.connector import get_client  # Клиент для по
 from database.models.mysql import SettingsBase  # Модель СУБД MySQL
 from api.mysql.fastapi_app import get_url  # URL для общения с API
 from logger import sender as lg  # Логер
-from get_config import get_config  # Получение локальных настроек
+from settings.get_config import get_config  # Получение локальных настроек
 
 
 async def main():

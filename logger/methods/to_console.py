@@ -60,7 +60,7 @@ class ConsoleLogger:
 
     def format_log(self, log: Dict[str, Any]) -> str:
         parts = []
-        error_mode = int(log.get("code", 0)) > 200
+        error_mode = int(log.get("status_code", 0)) > 200
 
         for column in self.columns_order:
             if not self.columns_styles.get(column, {}).get("show", False):

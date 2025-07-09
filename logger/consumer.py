@@ -7,6 +7,7 @@ from settings.get_config import get_config  # Получение локальн�
 from api.mysql.fastapi_app import get_url  # Получение URL API настроек
 from logger.methods.to_console import ConsoleLogger  # Вывод логов в консоль
 from logger.methods.to_file import FileLogger  # Вывод логов в файл
+from database.connectors.connector import get_client
 
 
 # Создание данных для подключения к RabbitMq
@@ -30,11 +31,25 @@ def get_methods():
     return [save_methods.get("console", True), save_methods.get("file", True), save_methods.get("db", True),]
 
 
+# Получение настроек подключения к TimeScaleDB
+def get_connection_settings():
+    data = requests.get(f"{get_url()}/secret/many?tag=timescale").json()
+    return {
+        "host": data.get("tm_host", "localhost"),
+        "port": data.get("tm_port", None),
+        "username": data.get("tm_username", None),
+        "password": data.get("tm_password", None),
+        "database": data.get("tm_database", None)
+    }
+
+
 save_to_console, save_to_file, save_to_database = get_methods()
 
 # Создание объектов для записи логов
 CONSOLE = ConsoleLogger()
 FILE = FileLogger()
+DB_LOG = get_client(db_type="timescale", **get_connection_settings())
+DB_QUERY = get_client(db_type="timescale", **get_connection_settings())
 
 
 # Логика обработки логов
@@ -53,6 +68,10 @@ async def callback_logs(message: aio_pika.IncomingMessage):
         # Проверка на сохранение логов в файл
         if save_to_file is True:
             FILE.log(message)
+
+        # Проверка на сохранение логов в TimeScaleDb
+        if save_to_database is True:
+            pass
 
 
 # Логика обработки Telegram запросов
@@ -82,4 +101,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n[!] Выход из лог-консюмера.")
+        print("\n[!] Выход из лог-consumer (Наблюдатель).")

@@ -47,7 +47,7 @@ class FileLogger:
         level = entry.get("level", "INFO")
         module = entry.get("module", "unknown")
         message = entry.get("message", "")
-        code = entry.get("code", 0)
+        code = entry.get("status_code", 0)
 
         # Форматирование времени
         try:

@@ -77,7 +77,7 @@ def _build_log(level: str, message: str, module: str = "None", code: int = 0) ->
         "level": level.upper(),
         "module": module.upper(),
         "message": message,
-        "code": code
+        "status_code": code
     }
 
 
@@ -126,6 +126,8 @@ def none(message: str, module: str = "None", code: int = 0):
 # Закрытие соединения
 async def close_logger():
     global _connection, _channel, _worker_task, _initialized
+
+    # Если фоновый наблюдатель запущен - дожидаемся завершения работы
     if _worker_task:
         _worker_task.cancel()
         try:
@@ -133,6 +135,7 @@ async def close_logger():
         except asyncio.CancelledError:
             pass
 
+    # Если соединение открыто - закрываем
     if _connection:
         try:
             await _connection.close()

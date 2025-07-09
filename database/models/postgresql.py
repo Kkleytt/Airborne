@@ -1,83 +1,158 @@
-from database.models.base import Base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy import Integer, Float, Text, Boolean, TIMESTAMP, BigInteger, JSON, Date
+from sqlalchemy import Integer, Float, Text, Boolean, TIMESTAMP, BigInteger, JSON, Date, String
+from sqlalchemy.sql import func
 
 
-class KnowledgeBase(Base):
+# Класс для хранения компонентов (Текста, Фото, Аудио, Файлы, Клавиатуры)
+class KnowledgeBase(DeclarativeBase):
+    """
+    id: ID компонента
+    created: Timestamp дата создания компонента
+    edited: Timestamp дата последнего изменения компонента
+    editor: Telegram ID пользователя который сделал последнее изменение компонента
+    type: Тип компонента (text, photo, audio, document, file, keyboard, location) (Текст длиной не более 16 символов)
+    tag: Тэг для группировки компонентов (Текст длиной не более 64 символов)
+    description: Описание компонента (Текст любой длины)
+    meta: JSON метаданные файлов
+    value: Значение компонента (Текст любой длины)
+    """
+
     __tablename__ = "knowledge"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False, autoincrement=True)
-    created: Mapped[int] = mapped_column(TIMESTAMP, nullable=False)
-    edited: Mapped[int] = mapped_column(TIMESTAMP, nullable=False)
+    created: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
+    edited: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
     editor: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    type: Mapped[str] = mapped_column(Text, nullable=False)
-    tag: Mapped[str] = mapped_column(Text, nullable=True)
+    type: Mapped[str] = mapped_column(String(16), nullable=False)
+    tag: Mapped[str] = mapped_column(String(64), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     meta: Mapped[dict] = mapped_column(JSON, nullable=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
 
-class NewsBase(Base):
+# Класс для хранения новостей
+class NewsBase(DeclarativeBase):
+    """
+    id: ID новости
+    created: Timestamp дата создания новости
+    creator: Telegram ID пользователя создавшего запись
+    name: Название новости (Текст любой длины)
+    tag: Тэг для группировки новостей (Текст длиной не более 64 символов)
+    text_id: ID текста из таблицы knowledge
+    images_id: Список ID изображений из таблицы knowledge
+    files_id: Список ID файлов из таблицы knowledge
+    keyboard_id: ID клавиатуры из таблицы knowledge
+    views: Список Telegram ID пользователей просмотревших запись
+    invites: Список Telegram ID кому придет оповещение о новой записи
+    ignores: Список Telegram ID кому нельзя показывать запись
+    """
+
     __tablename__ = "news"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False, autoincrement=True)
-    created: Mapped[int] = mapped_column(TIMESTAMP, nullable=False)
+    created: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
     creator: Mapped[int] = mapped_column(BigInteger, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    tag: Mapped[str] = mapped_column(Text, nullable=True)
+    tag: Mapped[str] = mapped_column(String(64), nullable=True)
     text_id: Mapped[int] = mapped_column(Integer, nullable=False)
     images_id: Mapped[dict] = mapped_column(JSON, nullable=True)
     files_id: Mapped[dict] = mapped_column(JSON, nullable=True)
     keyboard_id: Mapped[int] = mapped_column(Integer, nullable=False)
     views: Mapped[dict] = mapped_column(JSON, nullable=True)
-    invite: Mapped[dict] = mapped_column(JSON, nullable=True)
+    invites: Mapped[dict] = mapped_column(JSON, nullable=True)
     ignores: Mapped[dict] = mapped_column(JSON, nullable=True)
 
 
-class UsersBase(Base):
+# Класс для хранения пользователей
+class UsersBase(DeclarativeBase):
+    """
+    id: Telegram ID пользователя
+    nick: Telegram никнейм пользователя (Текст длиной не более 64 символов)
+    birthday: День рождение пользователя (Дата)
+    phone: Телефон пользователя (Текст длиной не более 16 символов)
+    name_first: Telegram имя пользователя (Текст любой длины)
+    name_second: Telegram фамилия пользователя (Текст любой длины)
+    name_manual: Полное ФИО пользователя вручную введенное (Текст любой длины)
+    request_total: Общее количество Telegram запросов от пользователя
+    request_first: Timestamp время отправки первого Telegram запроса
+    request_last: Timestamp время отправки последнего Telegram запроса
+    blocked_status: Статус блокировки пользователя (True-заблокирован, False-разблокирован)
+    blocked_time: Время окончания блокировки пользователя
+    ip: Последний IP адрес пользователя (Текст длиной не более 32 символов)
+    device: Последнее устройство пользователя (Текст длиной не более 64 символов)
+    role: Роль пользователя (user, privileges, temp_admin, admin, root) (Текст длиной не более 16 символов)
+    rating: Рейтинг пользователя на основе отзывов о нем
+    description: Описание себя как пользователя (Текст любой длины)
+    groups: Список групп в которых состоит пользователь
+    """
+
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, nullable=False)
-    nick: Mapped[str] = mapped_column(Text, nullable=True)
+    nick: Mapped[str] = mapped_column(String(64), nullable=True)
     birthday: Mapped[str] = mapped_column(Date, nullable=True)
-    phone: Mapped[str] = mapped_column(Text, nullable=True)
+    phone: Mapped[str] = mapped_column(String(16), nullable=True)
     name_first: Mapped[str] = mapped_column(Text, nullable=True)
     name_second: Mapped[str] = mapped_column(Text, nullable=True)
     name_manual: Mapped[str] = mapped_column(Text, nullable=True)
     request_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    request_first: Mapped[int] = mapped_column(Integer, nullable=True)
-    request_last: Mapped[int] = mapped_column(Integer, nullable=True)
-    blocked_status: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    blocked_time: Mapped[str] = mapped_column(TIMESTAMP, nullable=False, default='2200-01-01 00:00:00')
-    ip: Mapped[str] = mapped_column(Text, nullable=True)
-    device: Mapped[str] = mapped_column(Text, nullable=True)
-    role: Mapped[str] = mapped_column(Text, nullable=False, default="user")
+    request_first: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
+    request_last: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
+    blocked_status: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=False)
+    blocked_time: Mapped[str] = mapped_column(TIMESTAMP(timezone=False), nullable=False, default=func.now())
+    ip: Mapped[str] = mapped_column(String(32), nullable=True)
+    device: Mapped[str] = mapped_column(String(64), nullable=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
     rating: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    groups: Mapped[dict] = mapped_column(JSON, nullable=True)
+    groups: Mapped[dict] = mapped_column(JSON, nullable=True, server_default=[])
 
 
-class GroupsBase(Base):
+# Класс для хранения групп пользователей
+class GroupsBase(DeclarativeBase):
+    """
+    id: ID группы
+    name: Название группы (Текст любой длины)
+    tag: Тэг группы для быстрого поиска (Текст длиной не более 64 символов)
+    description: Описание группы (Текст любой длины)
+    admins: Список Telegram ID администраторов группы
+    users: Список Telegram ID пользователей группы
+    invites: Список Telegram ID кому отправить приглашение в группу
+    events: Список ID событий в группе
+    """
+
     __tablename__ = "groups"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False, autoincrement=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    tag: Mapped[str] = mapped_column(Text, nullable=True)
+    tag: Mapped[str] = mapped_column(String(64), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    admins: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
-    users: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
-    invite: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
-    events: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
+    admins: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
+    users: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
+    invites: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
+    events: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
 
 
-class EventsBase(Base):
+# Класс для хранения событий
+class EventsBase(DeclarativeBase):
+    """
+    id: ID события
+    name: Название события (Текст любой длины)
+    description: Описание события (Текст любой длины)
+    date: Дата предстоящего события
+    location: Локация события (URL ссылка на Яндекс Картах)
+    users: Список Telegram ID пользователей, которые придут на событие
+    invites: Список Telegram ID пользователей, кого приглашают на событие
+    """
+
     __tablename__ = "events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False, autoincrement=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    date: Mapped[int] = mapped_column(TIMESTAMP, nullable=False)
+    date: Mapped[int] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     location: Mapped[str] = mapped_column(Text, nullable=True)
     users: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
-    invite: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
+    invites: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
