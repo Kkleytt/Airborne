@@ -18,7 +18,7 @@ class LogsModel(BaseModel):
     __tablename__ = "logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
+    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     level: Mapped[str] = mapped_column(String(16), nullable=False)
     module: Mapped[str] = mapped_column(String(64), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
@@ -40,7 +40,7 @@ class QueryModel(BaseModel):
     __tablename__ = "telegram_query"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
+    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     query_type: Mapped[str] = mapped_column(String(32), nullable=False)

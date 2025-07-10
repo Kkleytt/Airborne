@@ -21,13 +21,13 @@ class KnowledgeModel(BaseModel):
     __tablename__ = "knowledge"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False, autoincrement=True)
-    created: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
-    edited: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
+    created: Mapped[int] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    edited: Mapped[int] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     editor: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    type: Mapped[str] = mapped_column(String(16), nullable=False)
+    type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="text")
     tag: Mapped[str] = mapped_column(String(64), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column(JSON, nullable=True)
+    meta: Mapped[dict] = mapped_column(JSON, nullable=True, server_default="{}")
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
 
@@ -51,7 +51,7 @@ class NewsModel(BaseModel):
     __tablename__ = "news"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False, autoincrement=True)
-    created: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
+    created: Mapped[int] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     creator: Mapped[int] = mapped_column(BigInteger, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     tag: Mapped[str] = mapped_column(String(64), nullable=True)
@@ -59,9 +59,9 @@ class NewsModel(BaseModel):
     images_id: Mapped[dict] = mapped_column(JSON, nullable=True)
     files_id: Mapped[dict] = mapped_column(JSON, nullable=True)
     keyboard_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    views: Mapped[dict] = mapped_column(JSON, nullable=True)
-    invites: Mapped[dict] = mapped_column(JSON, nullable=True)
-    ignores: Mapped[dict] = mapped_column(JSON, nullable=True)
+    views: Mapped[dict] = mapped_column(JSON, nullable=True, server_default="[]")
+    invites: Mapped[dict] = mapped_column(JSON, nullable=True, server_default="[]")
+    ignores: Mapped[dict] = mapped_column(JSON, nullable=True, server_default="[]")
 
 
 # Класс для хранения пользователей
@@ -96,17 +96,17 @@ class UsersModel(BaseModel):
     name_first: Mapped[str] = mapped_column(Text, nullable=True)
     name_second: Mapped[str] = mapped_column(Text, nullable=True)
     name_manual: Mapped[str] = mapped_column(Text, nullable=True)
-    request_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    request_first: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
-    request_last: Mapped[int] = mapped_column(TIMESTAMP(timezone=False), nullable=False, server_default=func.now())
-    blocked_status: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=False)
-    blocked_time: Mapped[str] = mapped_column(TIMESTAMP(timezone=False), nullable=False, default=func.now())
+    request_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    request_first: Mapped[int] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    request_last: Mapped[int] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    blocked_status: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    blocked_time: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     ip: Mapped[str] = mapped_column(String(32), nullable=True)
     device: Mapped[str] = mapped_column(String(64), nullable=True)
-    role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
-    rating: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, server_default="user")
+    rating: Mapped[float] = mapped_column(Float, nullable=False, server_default="0")
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    groups: Mapped[dict] = mapped_column(JSON, nullable=True, server_default=[])
+    groups: Mapped[dict] = mapped_column(JSON, nullable=True, server_default="[]")
 
 
 # Класс для хранения групп пользователей
@@ -128,10 +128,10 @@ class GroupsModel(BaseModel):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     tag: Mapped[str] = mapped_column(String(64), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    admins: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
-    users: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
-    invites: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
-    events: Mapped[dict] = mapped_column(JSON, nullable=False, default=[])
+    admins: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")
+    users: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")
+    invites: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")
+    events: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")
 
 
 # Класс для хранения событий
@@ -153,5 +153,5 @@ class EventsModel(BaseModel):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     date: Mapped[int] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     location: Mapped[str] = mapped_column(Text, nullable=True)
-    users: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
-    invites: Mapped[dict] = mapped_column(JSON, nullable=False, default='[]')
+    users: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")
+    invites: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="[]")

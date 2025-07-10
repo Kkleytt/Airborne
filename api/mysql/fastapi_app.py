@@ -33,7 +33,7 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
 
     # Собираем лог для передачи
-    module = "fastapi-settings"
+    module = "fastapi-mysql"
     message = f"{request.method} {request.url.path}?{request.url.query} from {client_host}:{client_port}"
     code = response.status_code
 

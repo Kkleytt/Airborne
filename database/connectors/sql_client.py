@@ -91,13 +91,22 @@ class Client:
 
     # Вставка записи по переданным полям
     async def insert_model(self, model: Type, data: dict):
+        # Если Бд - не подключена
         if not await self.is_connected():
             return
+
         try:
             async with self.async_session() as session:
                 instance = model(**data)
                 session.add(instance)
                 await session.commit()
+                await session.refresh(instance)  # Обновляем данные из БД
+
+                # Преобразуем ORM объект в словарь, исключая служебные атрибуты
+                return {
+                    k: v for k, v in vars(instance).items()
+                    if not k.startswith("_")
+                }
         except Exception as e:
             await self.handle_error(e)
 

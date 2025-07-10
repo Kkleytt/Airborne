@@ -1,7 +1,7 @@
 import json
 import asyncio
 import aio_pika
-from datetime import datetime
+from datetime import datetime, timezone
 from settings.get_config import get_config
 
 
@@ -21,7 +21,7 @@ class LoggerState:
 state = LoggerState()
 
 
-# Инициализация подключения к RabbitMQ и запуск воркера
+# Инициализация подключения к RabbitMQ и запуск наблюдателя
 async def init_logger():
     async with state.init_lock:
         if state.initialized:
@@ -44,7 +44,7 @@ async def init_logger():
             print(f"[Logger][ERROR] Ошибка подключения к RabbitMQ: {e}")
 
 
-# Универсальный воркер для логов и запросов
+# Универсальный наблюдатель для логов и запросов
 async def _worker():
     while True:
         log_task = asyncio.create_task(state.log_queue.get())
@@ -83,7 +83,7 @@ async def _worker():
 # Формирование лог-сообщения
 def _build_log(level: str, message: str, module: str = "None", code: int = 0):
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "level": level.upper(),
         "module": module.upper(),
         "message": message,
@@ -94,6 +94,7 @@ def _build_log(level: str, message: str, module: str = "None", code: int = 0):
 # Формирование запроса
 def _build_query(user_id: int, chat_id: int, text_type: str, text: str, time: int):
     return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "user_id": user_id,
         "chat_id": chat_id,
         "query_type": text_type,
@@ -131,7 +132,7 @@ def query(user_id: int, chat_id: int, text_type: str, text: str, time: int):
     asyncio.create_task(_safe_enqueue_query(user_id, chat_id, text_type, text, time))
 
 
-# Закрытие логгера
+# Закрытие логера
 async def close_logger():
     if state.worker_task:
         state.worker_task.cancel()
