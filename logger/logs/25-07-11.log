@@ -1,0 +1,4 @@
+# === START OF FILE: 2025-07-11 00:01:27 ===
+[2025-07-11 00:01:27] [INFO] [FASTAPI-MYSQL] GET /secret/many?tag=postgres from 127.0.0.1:58231 [code: 200]
+[2025-07-11 00:01:29] [INFO] [FASTAPI-MYSQL] GET /secret/many?tag=api from 127.0.0.1:58234 [code: 200]
+[2025-07-11 00:01:29] [INFO] [FASTAPI-MYSQL] GET /secret/many?tag=api from 127.0.0.1:58241 [code: 200]

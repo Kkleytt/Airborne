@@ -128,6 +128,13 @@ class Client:
                     setattr(instance, key, value)
 
                 await session.commit()
+                await session.refresh(instance)  # Обновляем данные из БД
+
+                # Преобразуем ORM объект в словарь, исключая служебные атрибуты
+                return {
+                    k: v for k, v in vars(instance).items()
+                    if not k.startswith("_")
+                }
         except Exception as e:
             await self.handle_error(e)
 

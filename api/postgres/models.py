@@ -31,3 +31,8 @@ class Knowledge:
         meta: dict | None = {}
         value: str
 
+    class UploadFile(BaseModel):
+        editor: int
+        tag: str | None = None
+        description: str | None = None
+        name: str | None = None
