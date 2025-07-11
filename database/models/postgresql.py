@@ -1,7 +1,8 @@
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Integer, Float, Text, Boolean, TIMESTAMP, BigInteger, JSON, Date, String
-from sqlalchemy.sql import func
-from database.models.basemodel import BaseModel
+from sqlalchemy.orm import Mapped, mapped_column  # Преобразование данных
+from sqlalchemy import Integer, Float, Text, Boolean, TIMESTAMP, BigInteger, JSON, Date, String  # Типы SQL данных
+from sqlalchemy.sql import func  # SQL функции
+
+from database.models.basemodel import BaseModel  # Базовая модель данных ORM
 
 
 # Класс для хранения компонентов (Текста, Фото, Аудио, Файлы, Клавиатуры)
@@ -14,7 +15,6 @@ class KnowledgeModel(BaseModel):
     type: Тип компонента (text, photo, audio, document, file, keyboard, location) (Текст длиной не более 16 символов)
     tag: Тэг для группировки компонентов (Текст длиной не более 64 символов)
     description: Описание компонента (Текст любой длины)
-    meta: JSON метаданные файлов
     value: Значение компонента (Текст любой длины)
     """
 
@@ -27,7 +27,6 @@ class KnowledgeModel(BaseModel):
     type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="text")
     tag: Mapped[str] = mapped_column(String(64), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    meta: Mapped[dict] = mapped_column(JSON, nullable=True, server_default="{}")
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
 

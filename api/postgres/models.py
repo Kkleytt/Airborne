@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel  # Базовая модель данных
+from datetime import datetime  # Типа данных datetime
 
 
 class Knowledge:
@@ -11,7 +11,6 @@ class Knowledge:
         type: str
         tag: str
         description: str
-        meta: dict
         value: str
 
     class Create(BaseModel):
@@ -19,7 +18,6 @@ class Knowledge:
         type: str | None = "text"
         tag: str | None = None
         description: str | None = None
-        meta: dict | None = {}
         value: str
 
     class Update(BaseModel):
@@ -28,11 +26,4 @@ class Knowledge:
         type: str | None = "text"
         tag: str | None = None
         description: str | None = None
-        meta: dict | None = {}
         value: str
-
-    class UploadFile(BaseModel):
-        editor: int
-        tag: str | None = None
-        description: str | None = None
-        name: str | None = None
